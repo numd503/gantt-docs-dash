@@ -147,13 +147,14 @@ export class GanttLibrary {
     let groupId = 0;
 
     filteredData.forEach((task, index) => {
-      const groupKey = task.epicName || 'Без эпика';
+      // Each task gets its own group to ensure stages appear consecutively on the same row
+      const groupKey = `${task.epicName || 'Без эпика'} - ${task.taskName}`;
       
       if (!groupMap.has(groupKey)) {
         groupMap.set(groupKey, groupId);
         groups.push({
           id: groupId,
-          content: groupKey,
+          content: `<div><strong>${task.taskName}</strong><br/><small>${task.epicName || 'Без эпика'}</small></div>`,
         });
         groupId++;
       }
@@ -165,37 +166,40 @@ export class GanttLibrary {
         items.push({
           id: `${index}-analytics`,
           group: currentGroupId,
-          content: `${task.taskName} (Analytics)`,
+          content: 'Analytics',
           start: task.analyticsStart,
           end: task.analyticsEnd,
           className: 'phase-analytics',
           title: this.createTooltip(task, 'Analytics'),
+          type: 'range',
         });
       }
 
-      // Add Development phase
+      // Add Development phase (should start after Analytics)
       if (task.developmentStart && task.developmentEnd) {
         items.push({
           id: `${index}-development`,
           group: currentGroupId,
-          content: `${task.taskName} (Development)`,
+          content: 'Development',
           start: task.developmentStart,
           end: task.developmentEnd,
           className: 'phase-development',
           title: this.createTooltip(task, 'Development'),
+          type: 'range',
         });
       }
 
-      // Add Testing phase
+      // Add Testing phase (should start after Development)
       if (task.testingStart && task.testingEnd) {
         items.push({
           id: `${index}-testing`,
           group: currentGroupId,
-          content: `${task.taskName} (Testing)`,
+          content: 'Testing',
           start: task.testingStart,
           end: task.testingEnd,
           className: 'phase-testing',
           title: this.createTooltip(task, 'Testing'),
+          type: 'range',
         });
       }
     });
@@ -204,11 +208,14 @@ export class GanttLibrary {
     const groupsDataSet = new DataSet(groups);
 
     const options = {
-      stack: true,
+      stack: false, // Don't stack items - each task's stages appear on the same row
       orientation: 'top',
       showCurrentTime: true,
       zoomMin: 1000 * 60 * 60 * 24 * 7, // 1 week
       zoomMax: 1000 * 60 * 60 * 24 * 365 * 2, // 2 years
+      margin: {
+        item: 10,
+      },
     };
 
     if (this.timeline) {
