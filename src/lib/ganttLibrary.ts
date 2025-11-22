@@ -1,0 +1,249 @@
+import { DataSet } from 'vis-data';
+import { Timeline } from 'vis-timeline';
+import * as XLSX from 'xlsx';
+import 'vis-timeline/styles/vis-timeline-graph2d.css';
+
+export interface TaskData {
+  taskType: string;
+  epicName: string;
+  taskName: string;
+  taskStatusFull: string;
+  taskStatus: string;
+  priority: string;
+  effort: string;
+  isAnalytical: boolean;
+  assignee: string;
+  analyticsStart?: Date;
+  analyticsEnd?: Date;
+  developmentStart?: Date;
+  developmentEnd?: Date;
+  testingStart?: Date;
+  testingEnd?: Date;
+}
+
+export interface GanttConfig {
+  container: HTMLElement;
+  showFilters?: boolean;
+  showLegend?: boolean;
+  defaultView?: 'month' | 'quarter' | 'year';
+  locale?: string;
+}
+
+export interface FilterOptions {
+  taskTypes?: string[];
+  statuses?: string[];
+  priorities?: string[];
+  epics?: string[];
+}
+
+export class GanttLibrary {
+  private timeline: Timeline | null = null;
+  private dataSet: DataSet<any> | null = null;
+  private rawData: TaskData[] = [];
+  private container: HTMLElement;
+  private config: GanttConfig;
+  private filters: FilterOptions = {};
+
+  constructor(config: GanttConfig) {
+    this.container = config.container;
+    this.config = config;
+  }
+
+  async loadFromExcel(file: File | string): Promise<void> {
+    let arrayBuffer: ArrayBuffer;
+
+    if (typeof file === 'string') {
+      // Load from URL
+      const response = await fetch(file);
+      arrayBuffer = await response.arrayBuffer();
+    } else {
+      // Load from File object
+      arrayBuffer = await file.arrayBuffer();
+    }
+
+    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+    const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+    this.rawData = this.parseExcelData(jsonData);
+    this.render();
+  }
+
+  private parseExcelData(data: any[]): TaskData[] {
+    return data.map((row: any) => ({
+      taskType: row['Task Type'] || '',
+      epicName: row['Epic Name'] || '',
+      taskName: row['Task Name'] || '',
+      taskStatusFull: row['Task Status Full'] || '',
+      taskStatus: row['Task Status'] || '',
+      priority: row['Приоритет'] || '',
+      effort: row['Ожидаемые трудозатраты'] || '',
+      isAnalytical: row['Аналитическая задача'] === true || row['Аналитическая задача'] === 'True',
+      assignee: row['Response'] || '',
+      analyticsStart: this.parseDate(row['Plan — Analytics — Start']),
+      analyticsEnd: this.parseDate(row['Plan — Analytics — End']),
+      developmentStart: this.parseDate(row['Plan — Development — Start']),
+      developmentEnd: this.parseDate(row['Plan — Development — End']),
+      testingStart: this.parseDate(row['Plan — Testing — Start']),
+      testingEnd: this.parseDate(row['Plan — Testing — End']),
+    }));
+  }
+
+  private parseDate(dateValue: any): Date | undefined {
+    if (!dateValue) return undefined;
+    
+    if (dateValue instanceof Date) return dateValue;
+    
+    // Handle Excel serial dates
+    if (typeof dateValue === 'number') {
+      const date = XLSX.SSF.parse_date_code(dateValue);
+      return new Date(date.y, date.m - 1, date.d);
+    }
+    
+    // Handle string dates
+    if (typeof dateValue === 'string') {
+      const parts = dateValue.split('/');
+      if (parts.length === 3) {
+        return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+      }
+    }
+    
+    return undefined;
+  }
+
+  setFilters(filters: FilterOptions): void {
+    this.filters = filters;
+    this.render();
+  }
+
+  private getFilteredData(): TaskData[] {
+    let filtered = [...this.rawData];
+
+    if (this.filters.taskTypes && this.filters.taskTypes.length > 0) {
+      filtered = filtered.filter(task => this.filters.taskTypes!.includes(task.taskType));
+    }
+
+    if (this.filters.statuses && this.filters.statuses.length > 0) {
+      filtered = filtered.filter(task => this.filters.statuses!.includes(task.taskStatus));
+    }
+
+    if (this.filters.priorities && this.filters.priorities.length > 0) {
+      filtered = filtered.filter(task => this.filters.priorities!.includes(task.priority));
+    }
+
+    if (this.filters.epics && this.filters.epics.length > 0) {
+      filtered = filtered.filter(task => this.filters.epics!.includes(task.epicName));
+    }
+
+    return filtered;
+  }
+
+  private render(): void {
+    const filteredData = this.getFilteredData();
+    const items: any[] = [];
+    const groups: any[] = [];
+    const groupMap = new Map<string, number>();
+
+    let groupId = 0;
+
+    filteredData.forEach((task, index) => {
+      const groupKey = task.epicName || 'Без эпика';
+      
+      if (!groupMap.has(groupKey)) {
+        groupMap.set(groupKey, groupId);
+        groups.push({
+          id: groupId,
+          content: groupKey,
+        });
+        groupId++;
+      }
+
+      const currentGroupId = groupMap.get(groupKey)!;
+
+      // Add Analytics phase
+      if (task.analyticsStart && task.analyticsEnd) {
+        items.push({
+          id: `${index}-analytics`,
+          group: currentGroupId,
+          content: `${task.taskName} (Analytics)`,
+          start: task.analyticsStart,
+          end: task.analyticsEnd,
+          className: 'phase-analytics',
+          title: this.createTooltip(task, 'Analytics'),
+        });
+      }
+
+      // Add Development phase
+      if (task.developmentStart && task.developmentEnd) {
+        items.push({
+          id: `${index}-development`,
+          group: currentGroupId,
+          content: `${task.taskName} (Development)`,
+          start: task.developmentStart,
+          end: task.developmentEnd,
+          className: 'phase-development',
+          title: this.createTooltip(task, 'Development'),
+        });
+      }
+
+      // Add Testing phase
+      if (task.testingStart && task.testingEnd) {
+        items.push({
+          id: `${index}-testing`,
+          group: currentGroupId,
+          content: `${task.taskName} (Testing)`,
+          start: task.testingStart,
+          end: task.testingEnd,
+          className: 'phase-testing',
+          title: this.createTooltip(task, 'Testing'),
+        });
+      }
+    });
+
+    this.dataSet = new DataSet(items);
+    const groupsDataSet = new DataSet(groups);
+
+    const options = {
+      stack: true,
+      orientation: 'top',
+      showCurrentTime: true,
+      zoomMin: 1000 * 60 * 60 * 24 * 7, // 1 week
+      zoomMax: 1000 * 60 * 60 * 24 * 365 * 2, // 2 years
+    };
+
+    if (this.timeline) {
+      this.timeline.destroy();
+    }
+
+    this.timeline = new Timeline(this.container, this.dataSet, groupsDataSet, options);
+  }
+
+  private createTooltip(task: TaskData, phase: string): string {
+    return `
+      <strong>${task.taskName}</strong><br/>
+      Phase: ${phase}<br/>
+      Status: ${task.taskStatus}<br/>
+      Priority: ${task.priority}<br/>
+      ${task.assignee ? `Assignee: ${task.assignee}<br/>` : ''}
+      Epic: ${task.epicName || 'N/A'}
+    `;
+  }
+
+  getUniqueValues(field: keyof TaskData): string[] {
+    const values = new Set<string>();
+    this.rawData.forEach(task => {
+      const value = task[field];
+      if (value && typeof value === 'string') {
+        values.add(value);
+      }
+    });
+    return Array.from(values).sort();
+  }
+
+  destroy(): void {
+    if (this.timeline) {
+      this.timeline.destroy();
+      this.timeline = null;
+    }
+  }
+}
