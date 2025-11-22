@@ -31,35 +31,10 @@ export const GanttViewer = () => {
       showLegend: true,
     });
 
-    // Load example data
-    loadExampleData();
-
     return () => {
       ganttRef.current?.destroy();
     };
   }, []);
-
-  const loadExampleData = async () => {
-    try {
-      await ganttRef.current?.loadFromExcel('/data/plan_example.xlsx');
-      
-      // Get unique values for filters
-      if (ganttRef.current) {
-        setAvailableFilters({
-          taskTypes: ganttRef.current.getUniqueValues('taskType'),
-          statuses: ganttRef.current.getUniqueValues('taskStatus'),
-          priorities: ganttRef.current.getUniqueValues('priority'),
-          epics: ganttRef.current.getUniqueValues('epicName'),
-        });
-      }
-      
-      setIsLoaded(true);
-      toast.success('Gantt chart loaded successfully');
-    } catch (error) {
-      console.error('Error loading data:', error);
-      toast.error('Failed to load Gantt chart');
-    }
-  };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -236,7 +211,7 @@ export const GanttViewer = () => {
 
           {!isLoaded && (
             <div className="text-center py-8 text-muted-foreground">
-              Upload an Excel file or loading example data...
+              Upload an Excel file to view the Gantt chart
             </div>
           )}
         </CardContent>
