@@ -1,42 +1,70 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+/* Vis-Timeline customization */
+.vis-timeline {
+  border: none !important;
+  font-family: inherit !important;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.vis-item {
+  border-radius: 4px !important;
+  border: none !important;
+  font-size: 12px !important;
+  padding: 4px 8px !important;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.vis-item.phase-analytics {
+  background-color: hsl(var(--info)) !important;
+  color: white !important;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+.vis-item.phase-development {
+  background-color: hsl(var(--primary)) !important;
+  color: white !important;
 }
 
-.card {
-  padding: 2em;
+.vis-item.phase-testing {
+  background-color: hsl(var(--success)) !important;
+  color: white !important;
 }
 
-.read-the-docs {
-  color: #888;
+.vis-item.vis-selected {
+  opacity: 0.9 !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+.vis-labelset .vis-label {
+  border-bottom: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.vis-time-axis .vis-text {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.vis-panel.vis-background {
+  background-color: hsl(var(--card)) !important;
+}
+
+.vis-panel.vis-center {
+  border-left: 1px solid hsl(var(--border)) !important;
+  border-right: 1px solid hsl(var(--border)) !important;
+}
+
+.gantt-container {
+  min-height: 500px;
+}
+
+.vis-current-time {
+  background-color: hsl(var(--destructive)) !important;
+  width: 2px !important;
+}
+
+/* Tooltip styling */
+.vis-tooltip {
+  background-color: hsl(var(--popover)) !important;
+  color: hsl(var(--popover-foreground)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  border-radius: 6px !important;
+  padding: 8px 12px !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+  font-size: 12px !important;
 }
