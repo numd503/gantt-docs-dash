@@ -29,6 +29,13 @@ export const GanttViewer = () => {
       container: timelineRef.current,
       showFilters: true,
       showLegend: true,
+      maxTaskNameLength: 50, // Truncate long task names
+      // Customize stage colors here:
+      colors: {
+        analytics: '#6366f1', // Indigo
+        development: '#8b5cf6', // Purple
+        testing: '#10b981', // Green
+      },
     });
 
     return () => {

@@ -11,19 +11,36 @@
   padding: 4px 8px !important;
 }
 
+/* Phase colors - default vibrant colors (can be overridden via GanttConfig.colors) */
 .vis-item.phase-analytics {
-  background-color: hsl(var(--info)) !important;
+  background-color: #6366f1 !important;
   color: white !important;
+  font-weight: 500 !important;
 }
 
 .vis-item.phase-development {
-  background-color: hsl(var(--primary)) !important;
+  background-color: #8b5cf6 !important;
   color: white !important;
+  font-weight: 500 !important;
 }
 
 .vis-item.phase-testing {
-  background-color: hsl(var(--success)) !important;
+  background-color: #10b981 !important;
   color: white !important;
+  font-weight: 500 !important;
+}
+
+/* Legend color blocks */
+.phase-analytics {
+  background-color: #6366f1;
+}
+
+.phase-development {
+  background-color: #8b5cf6;
+}
+
+.phase-testing {
+  background-color: #10b981;
 }
 
 .vis-item.vis-selected {
@@ -34,6 +51,21 @@
 .vis-labelset .vis-label {
   border-bottom: 1px solid hsl(var(--border)) !important;
   color: hsl(var(--foreground)) !important;
+  padding: 8px !important;
+}
+
+.vis-labelset .vis-label .task-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-wrap: break-word;
+  max-width: 100%;
+}
+
+.vis-labelset .vis-label .task-label strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .vis-time-axis .vis-text {

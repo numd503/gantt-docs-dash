@@ -27,6 +27,13 @@ export interface GanttConfig {
   showLegend?: boolean;
   defaultView?: 'month' | 'quarter' | 'year';
   locale?: string;
+  labelWidth?: string; // Width of the task name labels (e.g., '25%', '300px')
+  maxTaskNameLength?: number; // Maximum characters for task names
+  colors?: {
+    analytics?: string; // CSS color for Analytics phase
+    development?: string; // CSS color for Development phase
+    testing?: string; // CSS color for Testing phase
+  };
 }
 
 export interface FilterOptions {
@@ -46,7 +53,43 @@ export class GanttLibrary {
 
   constructor(config: GanttConfig) {
     this.container = config.container;
-    this.config = config;
+    this.config = {
+      labelWidth: '25%',
+      maxTaskNameLength: 50,
+      colors: {
+        analytics: '#6366f1', // Vibrant indigo
+        development: '#8b5cf6', // Vibrant purple
+        testing: '#10b981', // Vibrant green
+      },
+      ...config,
+    };
+    this.applyCustomColors();
+  }
+
+  private applyCustomColors(): void {
+    // Inject custom colors as CSS variables
+    const style = document.createElement('style');
+    style.id = 'gantt-custom-colors';
+    const existingStyle = document.getElementById('gantt-custom-colors');
+    if (existingStyle) {
+      existingStyle.remove();
+    }
+    
+    style.innerHTML = `
+      .vis-item.phase-analytics {
+        background-color: ${this.config.colors?.analytics} !important;
+        color: white !important;
+      }
+      .vis-item.phase-development {
+        background-color: ${this.config.colors?.development} !important;
+        color: white !important;
+      }
+      .vis-item.phase-testing {
+        background-color: ${this.config.colors?.testing} !important;
+        color: white !important;
+      }
+    `;
+    document.head.appendChild(style);
   }
 
   async loadFromExcel(file: File | string): Promise<void> {
@@ -152,9 +195,16 @@ export class GanttLibrary {
       
       if (!groupMap.has(groupKey)) {
         groupMap.set(groupKey, groupId);
+        
+        // Truncate task name if too long
+        const maxLength = this.config.maxTaskNameLength || 50;
+        const truncatedTaskName = task.taskName.length > maxLength 
+          ? task.taskName.substring(0, maxLength) + '...' 
+          : task.taskName;
+        
         groups.push({
           id: groupId,
-          content: `<div><strong>${task.taskName}</strong><br/><small>${task.epicName || 'Без эпика'}</small></div>`,
+          content: `<div class="task-label"><strong title="${task.taskName}">${truncatedTaskName}</strong><br/><small>${task.epicName || 'Без эпика'}</small></div>`,
         });
         groupId++;
       }
@@ -216,6 +266,8 @@ export class GanttLibrary {
       margin: {
         item: 10,
       },
+      width: '100%',
+      groupOrder: 'id', // Maintain order
     };
 
     if (this.timeline) {
