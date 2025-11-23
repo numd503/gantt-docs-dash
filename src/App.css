@@ -36,6 +36,21 @@
   font-weight: 600 !important;
 }
 
+.vis-item.production-deadline {
+  background-color: #ef4444 !important;
+  color: #ef4444 !important;
+  border-color: #ef4444 !important;
+  font-size: 24px !important;
+  font-weight: bold !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  width: 16px !important;
+  height: 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
 /* Legend color blocks */
 .phase-analytics {
   background-color: #6366f1;

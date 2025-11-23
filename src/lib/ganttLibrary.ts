@@ -19,6 +19,7 @@ export interface TaskData {
   developmentEnd?: Date;
   testingStart?: Date;
   testingEnd?: Date;
+  productionDeadline?: Date;
 }
 
 export interface ReleaseData {
@@ -169,6 +170,7 @@ export class GanttLibrary {
       developmentEnd: this.parseDate(row['Plan — Development — End']),
       testingStart: this.parseDate(row['Plan — Testing — Start']),
       testingEnd: this.parseDate(row['Plan — Testing — End']),
+      productionDeadline: this.parseDate(row['Production Deadline']),
     }));
   }
 
@@ -327,6 +329,19 @@ export class GanttLibrary {
           className: 'phase-testing',
           title: this.createTooltip(task, 'Testing'),
           type: 'range',
+        });
+      }
+
+      // Add Production Deadline as a red dot
+      if (task.productionDeadline) {
+        items.push({
+          id: `${index}-production-deadline`,
+          group: currentGroupId,
+          content: '●',
+          start: task.productionDeadline,
+          className: 'production-deadline',
+          title: `<strong>Production Deadline</strong><br/>${task.productionDeadline.toLocaleDateString()}`,
+          type: 'point',
         });
       }
     });
