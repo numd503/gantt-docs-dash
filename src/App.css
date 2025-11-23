@@ -30,6 +30,12 @@
   font-weight: 500 !important;
 }
 
+.vis-item.phase-release {
+  background-color: #f59e0b !important;
+  color: white !important;
+  font-weight: 600 !important;
+}
+
 /* Legend color blocks */
 .phase-analytics {
   background-color: #6366f1;
@@ -41,6 +47,10 @@
 
 .phase-testing {
   background-color: #10b981;
+}
+
+.phase-release {
+  background-color: #f59e0b;
 }
 
 .vis-item.vis-selected {

@@ -21,6 +21,11 @@ export interface TaskData {
   testingEnd?: Date;
 }
 
+export interface ReleaseData {
+  release: string;
+  devCutDate: Date;
+}
+
 export interface GanttConfig {
   container: HTMLElement;
   showFilters?: boolean;
@@ -33,7 +38,9 @@ export interface GanttConfig {
     analytics?: string; // CSS color for Analytics phase
     development?: string; // CSS color for Development phase
     testing?: string; // CSS color for Testing phase
+    release?: string; // CSS color for Release boxes
   };
+  showReleases?: boolean; // Whether to show release schedule
 }
 
 export interface FilterOptions {
@@ -47,6 +54,7 @@ export class GanttLibrary {
   private timeline: Timeline | null = null;
   private dataSet: DataSet<any> | null = null;
   private rawData: TaskData[] = [];
+  private releaseData: ReleaseData[] = [];
   private container: HTMLElement;
   private config: GanttConfig;
   private filters: FilterOptions = {};
@@ -56,10 +64,12 @@ export class GanttLibrary {
     this.config = {
       labelWidth: '25%',
       maxTaskNameLength: 50,
+      showReleases: false,
       colors: {
         analytics: '#6366f1', // Vibrant indigo
         development: '#8b5cf6', // Vibrant purple
         testing: '#10b981', // Vibrant green
+        release: '#f59e0b', // Vibrant orange for releases
       },
       ...config,
     };
@@ -88,6 +98,11 @@ export class GanttLibrary {
         background-color: ${this.config.colors?.testing} !important;
         color: white !important;
       }
+      .vis-item.phase-release {
+        background-color: ${this.config.colors?.release} !important;
+        color: white !important;
+        font-weight: 600 !important;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -110,6 +125,31 @@ export class GanttLibrary {
 
     this.rawData = this.parseExcelData(jsonData);
     this.render();
+  }
+
+  async loadReleasesFromExcel(file: File | string): Promise<void> {
+    let arrayBuffer: ArrayBuffer;
+
+    if (typeof file === 'string') {
+      const response = await fetch(file);
+      arrayBuffer = await response.arrayBuffer();
+    } else {
+      arrayBuffer = await file.arrayBuffer();
+    }
+
+    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+    const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+    this.releaseData = this.parseReleaseData(jsonData);
+    this.render();
+  }
+
+  private parseReleaseData(data: any[]): ReleaseData[] {
+    return data.map((row: any) => ({
+      release: String(row['Release'] || ''),
+      devCutDate: this.parseDate(row['DevCutDate']) || new Date(),
+    })).filter(r => r.release && r.devCutDate);
   }
 
   private parseExcelData(data: any[]): TaskData[] {
@@ -159,6 +199,11 @@ export class GanttLibrary {
     this.render();
   }
 
+  setShowReleases(show: boolean): void {
+    this.config.showReleases = show;
+    this.render();
+  }
+
   private getFilteredData(): TaskData[] {
     let filtered = [...this.rawData];
 
@@ -188,6 +233,38 @@ export class GanttLibrary {
     const groupMap = new Map<string, number>();
 
     let groupId = 0;
+
+    // Add Release schedule as the first row if enabled
+    if (this.config.showReleases && this.releaseData.length > 0) {
+      const releaseGroupKey = 'releases';
+      groupMap.set(releaseGroupKey, groupId);
+      groups.push({
+        id: groupId,
+        content: `<div class="task-label"><strong>Releases</strong></div>`,
+      });
+      
+      // Create release boxes
+      for (let i = 0; i < this.releaseData.length; i++) {
+        const currentRelease = this.releaseData[i];
+        const previousRelease = i > 0 ? this.releaseData[i - 1] : null;
+        
+        const startDate = previousRelease ? previousRelease.devCutDate : currentRelease.devCutDate;
+        const endDate = currentRelease.devCutDate;
+        
+        items.push({
+          id: `release-${currentRelease.release}`,
+          group: groupId,
+          content: `Release ${currentRelease.release}`,
+          start: startDate,
+          end: endDate,
+          className: 'phase-release',
+          title: `Release ${currentRelease.release}<br/>DevCutDate: ${endDate.toLocaleDateString()}`,
+          type: 'range',
+        });
+      }
+      
+      groupId++;
+    }
 
     filteredData.forEach((task, index) => {
       // Each task gets its own group to ensure stages appear consecutively on the same row

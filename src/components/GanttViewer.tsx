@@ -6,13 +6,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Filter, Upload, X } from 'lucide-react';
+import { Filter, Upload, X, Calendar } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 
 export const GanttViewer = () => {
   const timelineRef = useRef<HTMLDivElement>(null);
   const ganttRef = useRef<GanttLibrary | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [showReleases, setShowReleases] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [filters, setFilters] = useState<FilterOptions>({});
   const [availableFilters, setAvailableFilters] = useState({
@@ -35,7 +37,9 @@ export const GanttViewer = () => {
         analytics: '#6366f1', // Indigo
         development: '#8b5cf6', // Purple
         testing: '#10b981', // Green
+        release: '#f59e0b', // Orange for releases
       },
+      showReleases: false,
     });
 
     return () => {
@@ -78,6 +82,24 @@ export const GanttViewer = () => {
     toast.success('Filters cleared');
   };
 
+  const handleReleaseFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      await ganttRef.current?.loadReleasesFromExcel(file);
+      toast.success('Release schedule loaded');
+    } catch (error) {
+      console.error('Error uploading release file:', error);
+      toast.error('Failed to process release file');
+    }
+  };
+
+  const toggleReleases = (checked: boolean) => {
+    setShowReleases(checked);
+    ganttRef.current?.setShowReleases(checked);
+  };
+
   const addFilter = (type: keyof FilterOptions, value: string) => {
     setFilters(prev => ({
       ...prev,
@@ -111,7 +133,7 @@ export const GanttViewer = () => {
                 <Button variant="outline" size="sm" asChild>
                   <span>
                     <Upload className="w-4 h-4 mr-2" />
-                    Upload Excel
+                    Upload Tasks
                   </span>
                 </Button>
                 <Input
@@ -122,10 +144,36 @@ export const GanttViewer = () => {
                   onChange={handleFileUpload}
                 />
               </Label>
+              <Label htmlFor="release-upload" className="cursor-pointer">
+                <Button variant="outline" size="sm" asChild>
+                  <span>
+                    <Calendar className="w-4 h-4 mr-2" />
+                    Upload Releases
+                  </span>
+                </Button>
+                <Input
+                  id="release-upload"
+                  type="file"
+                  accept=".xlsx,.xls"
+                  className="hidden"
+                  onChange={handleReleaseFileUpload}
+                />
+              </Label>
             </div>
           </div>
         </CardHeader>
         <CardContent>
+          <div className="mb-4 flex items-center gap-3 p-3 border rounded-lg bg-muted/50">
+            <Switch 
+              id="show-releases" 
+              checked={showReleases}
+              onCheckedChange={toggleReleases}
+            />
+            <Label htmlFor="show-releases" className="cursor-pointer">
+              Show Release Schedule
+            </Label>
+          </div>
+
           {showFilters && (
             <div className="mb-4 p-4 border rounded-lg bg-muted/50 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -241,6 +289,10 @@ export const GanttViewer = () => {
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded phase-testing" />
               <span className="text-sm">Testing</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded phase-release" />
+              <span className="text-sm">Releases</span>
             </div>
           </div>
         </CardContent>
