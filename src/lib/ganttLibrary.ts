@@ -51,7 +51,7 @@ export interface FilterOptions {
   epics?: string[];
 }
 
-export class GanttLibrary {
+export default class GanttLibrary {
   private timeline: Timeline | null = null;
   private dataSet: DataSet<any> | null = null;
   private rawData: TaskData[] = [];
