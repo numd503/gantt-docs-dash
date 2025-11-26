@@ -47,8 +47,8 @@ Create `docs/timeline.md`:
 
 <script src="../assets/gantt-library.js"></script>
 <script>
-  // GanttLibrary is now available as a global
-  const gantt = new window.GanttLibrary.default({
+  // GanttLibrary is now available as a global (UMD default export)
+  const gantt = new window.GanttLibrary({
     container: document.getElementById('timeline'),
     maxTaskNameLength: 50,
     colors: {
