@@ -397,4 +397,200 @@ export default class GanttLibrary {
       this.timeline = null;
     }
   }
+
+  // UI Rendering Methods for plain HTML integration
+  
+  renderControls(containerElement: HTMLElement): void {
+    const controlsHTML = `
+      <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; align-items: center;">
+        <div>
+          <label style="display: inline-block; padding: 8px 16px; background: #6366f1; color: white; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
+            📊 Upload Tasks
+            <input type="file" accept=".xlsx,.xls" id="gantt-tasks-upload" style="display: none;" />
+          </label>
+        </div>
+        <div>
+          <label style="display: inline-block; padding: 8px 16px; background: #8b5cf6; color: white; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
+            🚀 Upload Releases
+            <input type="file" accept=".xlsx,.xls" id="gantt-releases-upload" style="display: none;" />
+          </label>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <label style="font-size: 14px; font-weight: 500;">Show Releases:</label>
+          <label style="position: relative; display: inline-block; width: 44px; height: 24px;">
+            <input type="checkbox" id="gantt-show-releases" style="opacity: 0; width: 0; height: 0;" />
+            <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 24px;"></span>
+            <span style="position: absolute; content: ''; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%;"></span>
+          </label>
+        </div>
+        <button id="gantt-toggle-filters" style="padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
+          🔍 Toggle Filters
+        </button>
+      </div>
+    `;
+    
+    containerElement.innerHTML = controlsHTML;
+    
+    // Add event listeners
+    const tasksUpload = containerElement.querySelector('#gantt-tasks-upload') as HTMLInputElement;
+    const releasesUpload = containerElement.querySelector('#gantt-releases-upload') as HTMLInputElement;
+    const showReleasesToggle = containerElement.querySelector('#gantt-show-releases') as HTMLInputElement;
+    const toggleFiltersBtn = containerElement.querySelector('#gantt-toggle-filters') as HTMLButtonElement;
+    
+    tasksUpload.addEventListener('change', async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        await this.loadFromExcel(file);
+        // Trigger filter UI update if filters are visible
+        const filtersContainer = document.getElementById('gantt-filters-container');
+        if (filtersContainer && filtersContainer.style.display !== 'none') {
+          this.renderFilters(filtersContainer);
+        }
+      }
+    });
+    
+    releasesUpload.addEventListener('change', async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        await this.loadReleasesFromExcel(file);
+      }
+    });
+    
+    showReleasesToggle.addEventListener('change', (e) => {
+      const checked = (e.target as HTMLInputElement).checked;
+      this.setShowReleases(checked);
+      
+      // Update toggle appearance
+      const slider = containerElement.querySelector('#gantt-show-releases + span') as HTMLElement;
+      const knob = slider?.nextElementSibling as HTMLElement;
+      if (checked) {
+        slider.style.backgroundColor = '#10b981';
+        knob.style.transform = 'translateX(20px)';
+      } else {
+        slider.style.backgroundColor = '#ccc';
+        knob.style.transform = 'translateX(0)';
+      }
+    });
+    
+    toggleFiltersBtn.addEventListener('click', () => {
+      const filtersContainer = document.getElementById('gantt-filters-container');
+      if (filtersContainer) {
+        if (filtersContainer.style.display === 'none') {
+          filtersContainer.style.display = 'block';
+          this.renderFilters(filtersContainer);
+        } else {
+          filtersContainer.style.display = 'none';
+        }
+      }
+    });
+  }
+
+  renderFilters(containerElement: HTMLElement): void {
+    const taskTypes = this.getUniqueValues('taskType');
+    const statuses = this.getUniqueValues('taskStatus');
+    const priorities = this.getUniqueValues('priority');
+    const epics = this.getUniqueValues('epicName');
+    
+    const filtersHTML = `
+      <div style="padding: 16px; background: #f9fafb; border-radius: 8px; margin-bottom: 16px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 12px;">
+          <div>
+            <label style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 4px;">Task Type:</label>
+            <select id="gantt-filter-tasktype" multiple style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+              ${taskTypes.map(type => `<option value="${type}">${type}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 4px;">Status:</label>
+            <select id="gantt-filter-status" multiple style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+              ${statuses.map(status => `<option value="${status}">${status}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 4px;">Priority:</label>
+            <select id="gantt-filter-priority" multiple style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+              ${priorities.map(priority => `<option value="${priority}">${priority}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 4px;">Epic:</label>
+            <select id="gantt-filter-epic" multiple style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+              ${epics.map(epic => `<option value="${epic}">${epic}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button id="gantt-apply-filters" style="padding: 8px 16px; background: #6366f1; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
+            Apply Filters
+          </button>
+          <button id="gantt-clear-filters" style="padding: 8px 16px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
+            Clear Filters
+          </button>
+        </div>
+      </div>
+    `;
+    
+    containerElement.innerHTML = filtersHTML;
+    
+    // Add event listeners
+    const applyBtn = containerElement.querySelector('#gantt-apply-filters') as HTMLButtonElement;
+    const clearBtn = containerElement.querySelector('#gantt-clear-filters') as HTMLButtonElement;
+    
+    applyBtn.addEventListener('click', () => {
+      const taskTypeSelect = containerElement.querySelector('#gantt-filter-tasktype') as HTMLSelectElement;
+      const statusSelect = containerElement.querySelector('#gantt-filter-status') as HTMLSelectElement;
+      const prioritySelect = containerElement.querySelector('#gantt-filter-priority') as HTMLSelectElement;
+      const epicSelect = containerElement.querySelector('#gantt-filter-epic') as HTMLSelectElement;
+      
+      const filters: FilterOptions = {
+        taskTypes: Array.from(taskTypeSelect.selectedOptions).map(opt => opt.value),
+        statuses: Array.from(statusSelect.selectedOptions).map(opt => opt.value),
+        priorities: Array.from(prioritySelect.selectedOptions).map(opt => opt.value),
+        epics: Array.from(epicSelect.selectedOptions).map(opt => opt.value),
+      };
+      
+      this.setFilters(filters);
+    });
+    
+    clearBtn.addEventListener('click', () => {
+      this.setFilters({});
+      // Clear all selections
+      (containerElement.querySelector('#gantt-filter-tasktype') as HTMLSelectElement).selectedIndex = -1;
+      (containerElement.querySelector('#gantt-filter-status') as HTMLSelectElement).selectedIndex = -1;
+      (containerElement.querySelector('#gantt-filter-priority') as HTMLSelectElement).selectedIndex = -1;
+      (containerElement.querySelector('#gantt-filter-epic') as HTMLSelectElement).selectedIndex = -1;
+    });
+  }
+
+  renderLegend(containerElement: HTMLElement): void {
+    const legendHTML = `
+      <div style="padding: 16px; background: #f9fafb; border-radius: 8px; margin-top: 16px;">
+        <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 12px;">Phase Legend</h3>
+        <div style="display: flex; flex-wrap: wrap; gap: 16px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 24px; height: 24px; background: ${this.config.colors?.analytics}; border-radius: 4px;"></div>
+            <span style="font-size: 14px;">Analytics</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 24px; height: 24px; background: ${this.config.colors?.development}; border-radius: 4px;"></div>
+            <span style="font-size: 14px;">Development</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 24px; height: 24px; background: ${this.config.colors?.testing}; border-radius: 4px;"></div>
+            <span style="font-size: 14px;">Testing</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 24px; height: 24px; background: ${this.config.colors?.release}; border-radius: 4px;"></div>
+            <span style="font-size: 14px;">Releases</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #ef4444;">●</div>
+            <span style="font-size: 14px;">Production Deadline</span>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    containerElement.innerHTML = legendHTML;
+  }
 }

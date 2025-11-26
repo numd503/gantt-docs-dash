@@ -43,11 +43,22 @@ Create `docs/timeline.md`:
 # Project Timeline
 
 <link rel="stylesheet" href="../assets/gantt-library.css">
+
+<!-- Controls (file upload, releases toggle, filters) -->
+<div id="gantt-controls"></div>
+
+<!-- Filters panel (hidden by default) -->
+<div id="gantt-filters-container" style="display: none;"></div>
+
+<!-- Timeline container -->
 <div id="timeline" style="width: 100%; height: 600px;"></div>
+
+<!-- Legend -->
+<div id="gantt-legend"></div>
 
 <script src="../assets/gantt-library.js"></script>
 <script>
-  // GanttLibrary is now available as a global (UMD default export)
+  // Initialize GanttLibrary
   const gantt = new window.GanttLibrary({
     container: document.getElementById('timeline'),
     maxTaskNameLength: 50,
@@ -59,8 +70,14 @@ Create `docs/timeline.md`:
     }
   });
   
+  // Render UI controls (file upload, releases toggle, filter button)
+  gantt.renderControls(document.getElementById('gantt-controls'));
+  
+  // Render legend
+  gantt.renderLegend(document.getElementById('gantt-legend'));
+  
+  // Optional: Load data automatically on page load
   gantt.loadFromExcel('../data/tasks.xlsx');
-  // Optional: gantt.loadReleasesFromExcel('../data/releases.xlsx');
 </script>
 ```
 
@@ -84,11 +101,22 @@ new GanttLibrary({
 
 ## Key Methods
 
-- `loadFromExcel(file)` - Load tasks from Excel file
-- `loadReleasesFromExcel(file)` - Load release schedule
-- `setFilters(filters)` - Apply task filters
-- `setShowReleases(show)` - Toggle release timeline
-- `destroy()` - Clean up
+### Data Loading
+- `loadFromExcel(file)` - Load tasks from Excel file or URL
+- `loadReleasesFromExcel(file)` - Load release schedule from Excel file or URL
+
+### Filtering & Display
+- `setFilters(filters)` - Apply task filters programmatically
+- `setShowReleases(show)` - Toggle release timeline visibility
+
+### UI Rendering (for MkDocs integration)
+- `renderControls(container)` - Render file upload buttons, releases toggle, and filter button
+- `renderFilters(container)` - Render filter panel with dropdowns for task type, status, priority, epic
+- `renderLegend(container)` - Render phase legend
+
+### Utility
+- `getUniqueValues(field)` - Get unique values for a specific field (useful for custom filters)
+- `destroy()` - Clean up timeline instance
 
 ## CSS Customization
 
