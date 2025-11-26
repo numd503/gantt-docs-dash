@@ -20,7 +20,7 @@ This library renders interactive Gantt charts from Excel files in MkDocs documen
 npm run build -- --mode library
 ```
 
-This creates `dist/gantt-library.js` and `dist/gantt-library.css` as browser-compatible files.
+This creates `dist/gantt-library.js` and `dist/gantt-library.css` as browser-compatible UMD bundles that work directly in the browser.
 
 ### 2. Setup MkDocs
 
@@ -47,7 +47,8 @@ Create `docs/timeline.md`:
 
 <script src="../assets/gantt-library.js"></script>
 <script>
-  const gantt = new GanttLibrary({
+  // GanttLibrary is now available as a global
+  const gantt = new window.GanttLibrary.default({
     container: document.getElementById('timeline'),
     maxTaskNameLength: 50,
     colors: {
