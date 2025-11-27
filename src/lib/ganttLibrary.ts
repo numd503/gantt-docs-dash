@@ -198,6 +198,7 @@ export default class GanttLibrary {
 
   setFilters(filters: FilterOptions): void {
     this.filters = filters;
+    this.updateActiveFilterSummary();
     this.render();
   }
 
@@ -256,7 +257,7 @@ export default class GanttLibrary {
         items.push({
           id: `release-${currentRelease.release}`,
           group: groupId,
-          content: `Release ${currentRelease.release}`,
+          content: `${currentRelease.release}`,
           start: startDate,
           end: endDate,
           className: 'phase-release',
@@ -341,7 +342,7 @@ export default class GanttLibrary {
           start: task.productionDeadline,
           className: 'production-deadline',
           title: `<strong>Production Deadline</strong><br/>${task.productionDeadline.toLocaleDateString()}`,
-          type: 'point',
+          type: 'box',
         });
       }
     });
@@ -427,6 +428,7 @@ export default class GanttLibrary {
           🔍 Toggle Filters
         </button>
       </div>
+      <div id="gantt-active-filters" style="display: flex; flex-direction: column; gap: 8px; margin:8px 0 16px;"></div>
     `;
     
     containerElement.innerHTML = controlsHTML;
@@ -444,7 +446,7 @@ export default class GanttLibrary {
         // Trigger filter UI update if filters are visible
         const filtersContainer = document.getElementById('gantt-filters-container');
         if (filtersContainer && filtersContainer.style.display !== 'none') {
-          this.renderFilters(filtersContainer);
+          this.renderFilters(filtersContainer, this.filters);
         }
       }
     });
@@ -477,49 +479,50 @@ export default class GanttLibrary {
       if (filtersContainer) {
         if (filtersContainer.style.display === 'none') {
           filtersContainer.style.display = 'block';
-          this.renderFilters(filtersContainer);
+          this.renderFilters(filtersContainer, this.filters);
         } else {
           filtersContainer.style.display = 'none';
         }
       }
     });
+
+    this.updateActiveFilterSummary();
   }
 
-  renderFilters(containerElement: HTMLElement): void {
+  renderFilters(containerElement: HTMLElement, initialFilters: FilterOptions = this.filters): void {
     const taskTypes = this.getUniqueValues('taskType');
     const statuses = this.getUniqueValues('taskStatus');
     const priorities = this.getUniqueValues('priority');
     const epics = this.getUniqueValues('epicName');
+    const filterGroups: Array<{ key: keyof FilterOptions; label: string; options: string[] }> = [
+      { key: 'taskTypes', label: 'Task Type', options: taskTypes },
+      { key: 'statuses', label: 'Status', options: statuses },
+      { key: 'priorities', label: 'Priority', options: priorities },
+      { key: 'epics', label: 'Epic', options: epics },
+    ];
     
     const filtersHTML = `
       <div style="padding: 16px; background: #f9fafb; border-radius: 8px; margin-bottom: 16px;">
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 12px;">
-          <div>
-            <label style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 4px;">Task Type:</label>
-            <select id="gantt-filter-tasktype" multiple style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
-              ${taskTypes.map(type => `<option value="${type}">${type}</option>`).join('')}
-            </select>
-          </div>
-          <div>
-            <label style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 4px;">Status:</label>
-            <select id="gantt-filter-status" multiple style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
-              ${statuses.map(status => `<option value="${status}">${status}</option>`).join('')}
-            </select>
-          </div>
-          <div>
-            <label style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 4px;">Priority:</label>
-            <select id="gantt-filter-priority" multiple style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
-              ${priorities.map(priority => `<option value="${priority}">${priority}</option>`).join('')}
-            </select>
-          </div>
-          <div>
-            <label style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 4px;">Epic:</label>
-            <select id="gantt-filter-epic" multiple style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
-              ${epics.map(epic => `<option value="${epic}">${epic}</option>`).join('')}
-            </select>
-          </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 16px;">
+          ${filterGroups.map(group => `
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <label style="font-size: 14px; font-weight: 600;">${group.label}</label>
+              <div style="max-height: 180px; overflow-y: auto; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; background: white;">
+                ${group.options.length > 0 ? group.options.map(option => {
+                  const isChecked = initialFilters?.[group.key]?.includes(option);
+                  return `
+                    <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 6px;">
+                      <input type="checkbox" data-filter="${group.key}" value="${option}" ${isChecked ? 'checked' : ''} />
+                      <span>${option}</span>
+                    </label>
+                  `;
+                }).join('') : `<span style="font-size: 13px; color: #9ca3af;">No data</span>`}
+              </div>
+              <div id="gantt-chips-${group.key}" style="display: flex; flex-wrap: wrap; gap: 6px; min-height: 28px;"></div>
+            </div>
+          `).join('')}
         </div>
-        <div style="display: flex; gap: 8px;">
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
           <button id="gantt-apply-filters" style="padding: 8px 16px; background: #6366f1; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500;">
             Apply Filters
           </button>
@@ -532,34 +535,91 @@ export default class GanttLibrary {
     
     containerElement.innerHTML = filtersHTML;
     
-    // Add event listeners
     const applyBtn = containerElement.querySelector('#gantt-apply-filters') as HTMLButtonElement;
     const clearBtn = containerElement.querySelector('#gantt-clear-filters') as HTMLButtonElement;
     
-    applyBtn.addEventListener('click', () => {
-      const taskTypeSelect = containerElement.querySelector('#gantt-filter-tasktype') as HTMLSelectElement;
-      const statusSelect = containerElement.querySelector('#gantt-filter-status') as HTMLSelectElement;
-      const prioritySelect = containerElement.querySelector('#gantt-filter-priority') as HTMLSelectElement;
-      const epicSelect = containerElement.querySelector('#gantt-filter-epic') as HTMLSelectElement;
+    const getCheckedValues = (filterKey: keyof FilterOptions) => {
+      const inputs = Array.from(
+        containerElement.querySelectorAll<HTMLInputElement>(`input[data-filter="${filterKey}"]`)
+      );
+      return inputs.filter(input => input.checked).map(input => input.value);
+    };
+
+    const updateChips = (filterKey: keyof FilterOptions) => {
+      const chipsContainer = containerElement.querySelector(
+        `#gantt-chips-${filterKey}`
+      ) as HTMLElement | null;
+      if (!chipsContainer) return;
       
+      const values = getCheckedValues(filterKey);
+      if (values.length === 0) {
+        chipsContainer.innerHTML = `<span style="font-size: 12px; color: #9ca3af;">No selections</span>`;
+        return;
+      }
+      
+      chipsContainer.innerHTML = values
+        .map(value => `<span style="background: #e5e7eb; border-radius: 999px; padding: 4px 10px; font-size: 12px;">${value}</span>`)
+        .join('');
+    };
+
+    filterGroups.forEach(group => {
+      const inputs = containerElement.querySelectorAll<HTMLInputElement>(`input[data-filter="${group.key}"]`);
+      inputs.forEach(input => {
+        input.addEventListener('change', () => updateChips(group.key));
+      });
+      updateChips(group.key);
+    });
+    
+    applyBtn.addEventListener('click', () => {
       const filters: FilterOptions = {
-        taskTypes: Array.from(taskTypeSelect.selectedOptions).map(opt => opt.value),
-        statuses: Array.from(statusSelect.selectedOptions).map(opt => opt.value),
-        priorities: Array.from(prioritySelect.selectedOptions).map(opt => opt.value),
-        epics: Array.from(epicSelect.selectedOptions).map(opt => opt.value),
+        taskTypes: getCheckedValues('taskTypes'),
+        statuses: getCheckedValues('statuses'),
+        priorities: getCheckedValues('priorities'),
+        epics: getCheckedValues('epics'),
       };
       
       this.setFilters(filters);
     });
     
     clearBtn.addEventListener('click', () => {
+      filterGroups.forEach(group => {
+        const inputs = containerElement.querySelectorAll<HTMLInputElement>(`input[data-filter="${group.key}"]`);
+        inputs.forEach(input => {
+          input.checked = false;
+        });
+        updateChips(group.key);
+      });
       this.setFilters({});
-      // Clear all selections
-      (containerElement.querySelector('#gantt-filter-tasktype') as HTMLSelectElement).selectedIndex = -1;
-      (containerElement.querySelector('#gantt-filter-status') as HTMLSelectElement).selectedIndex = -1;
-      (containerElement.querySelector('#gantt-filter-priority') as HTMLSelectElement).selectedIndex = -1;
-      (containerElement.querySelector('#gantt-filter-epic') as HTMLSelectElement).selectedIndex = -1;
     });
+  }
+
+  private updateActiveFilterSummary(): void {
+    const summaryContainer = document.getElementById('gantt-active-filters');
+    if (!summaryContainer) return;
+
+    const entries = (Object.entries(this.filters) as [keyof FilterOptions, string[] | undefined][])
+      .filter(([, values]) => values && values.length);
+
+    if (entries.length === 0) {
+      summaryContainer.innerHTML = `<span style="font-size: 13px; color: #9ca3af;">No filters active</span>`;
+      return;
+    }
+
+    const labelMap: Record<keyof FilterOptions, string> = {
+      taskTypes: 'Task Type',
+      statuses: 'Status',
+      priorities: 'Priority',
+      epics: 'Epic',
+    };
+
+    summaryContainer.innerHTML = entries.map(([key, values]) => `
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <span style="font-size: 12px; font-weight: 600; color: #4b5563;">${labelMap[key]}</span>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+          ${(values || []).map(value => `<span style="background: #dbeafe; color: #1d4ed8; border-radius: 999px; padding: 4px 10px; font-size: 12px;">${value}</span>`).join('')}
+        </div>
+      </div>
+    `).join('');
   }
 
   renderLegend(containerElement: HTMLElement): void {
